@@ -26,7 +26,7 @@ if not FROM_CSV:
     for run in runs:
         # if run.sweep is not None and run.sweep.id in sweep_ids:
         if "experiment_description" in run.config and run.config["experiment_description"] in relevant_descriptions:
-            h_df = run.history(keys=["train\episodic_reward", "_timestamp", "train\policy_weights_grad_var"], samples=3000) # can either use run.history() or, instead, scan_history() and build list of dicts via [r for r in h_df]
+            h_df = run.history(keys=["train\episodic_reward", "_timestamp", "train\policy_weights_grad_var"], samples=3000) # can either use run.history() or, instead, scan_hisscan_history()tory() and build list of dicts via [r for r in h_df]
             hist_dicts = [r for r in h_df]
             if len(hist_dicts) > 0: # len(h_df) > 0:
                 # run.summary are the output key/values like accuracy.
@@ -121,11 +121,11 @@ if convergence_plots and FROM_CSV:
 
     line_width = 1.5
     fontsize = 18
-    w_size = 30000 if PLOT_TIME else 30
+    w_size = 30000 if PLOT_TIME else 200 #30
     matplotlib.rcParams.update({"font.size": fontsize - 4})
     game_envs = ["Asteroids", "Breakout", "VideoPinball", "KungFuMaster", "Phoenix",
                  "Gopher", "Krull", "NameThisGame"]#, "CrazyClimber", "RoadRunner"]
-    game_envs = ["Asteroids"]
+    # game_envs = ["Asteroids"]
     if PLOT_3by3:
         game_envs.append("CrazyClimber")
     game_envs_full = [n + "NoFrameskip-v4" for n in game_envs]
@@ -180,7 +180,7 @@ if convergence_plots and FROM_CSV:
                 largest_x = max([l[-1] - l[0] for l in df_depth.timestamp_vec])
             else:
                 largest_x = df_depth["_step"].max()
-            x_vals_shared = np.linspace(1, largest_x, round(largest_x / 3))
+            x_vals_shared = np.linspace(1, largest_x, 1000) # round(largest_x / 3))
 
             y_vals_vec = None
             for i_run in range(df_depth.shape[0]):  # iterate on seeds
@@ -200,7 +200,9 @@ if convergence_plots and FROM_CSV:
                 x_vals = x_vals_shared[:last_loc]
                 y_vals = f(x_vals)
                 y_vals = moving_average2(y_vals, w=w_size)
-                w_drop = 10000 #if PLOT_TIME else 10
+                w_drop = w_size #if PLOT_TIME else 10
+                if 'Kung' in env_name or 'Breakout' in env_name:
+                    w_drop = 500
                 nans = np.empty(x_vals_shared.shape[0] - len(y_vals))
                 nans[:] = np.nan
                 y_vals = np.concatenate((y_vals, nans))
@@ -230,7 +232,7 @@ if convergence_plots and FROM_CSV:
                     ax.set_xlim([0, 168])
                     ax.set_xlabel("Time [hours]", fontsize=fontsize)
                 else:
-                    ax.set_xlabel("Environment Steps (log scale)", fontsize=fontsize)
+                    ax.set_xlabel("Num of online interactions", fontsize=fontsize) # (log scale)
                 # ax.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
                 ax.grid("on")
                 ax.set_title(env_name[:-14], fontsize=fontsize)
@@ -240,6 +242,9 @@ if convergence_plots and FROM_CSV:
                 ax.set_yscale("log")
             if not PLOT_TIME:
                 ax.set_xscale("log")
+                ax.set_xlim(left=1e4)
+                if 'Video' in env_name:
+                    ax.set_ylim([-1e4, 3e5])
             yskip = [1, 4, 7] if PLOT_3by3 else [1, 5]
             if plot_count in yskip:
                 if PLOT_REWARD:

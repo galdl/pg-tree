@@ -3,9 +3,9 @@ from sympy import Matrix
 S = 4
 A = 3
 
-case_str = [ 'Permutation', 'Random', 'Uniform']
-color_case = ['r', 'g', 'b']
-for i_case in range(3):
+gamma_vec = [0.9, 1]
+# case_str = [ 'Permutation', 'Random', 'Uniform']
+for i_gamma in range(len(gamma_vec)):
     def draw_MDP():
         theta = np.random.rand(S)
         #theta[0] += 10
@@ -15,15 +15,15 @@ for i_case in range(3):
             a_idx = np.random.randint(A)
             s_idx = np.random.randint(S)
         # P[:, :, 0] += 50
-        if i_case == 0:
-            P = np.exp(10 * P)
-        if i_case == 2:
-            P = 0.7 * np.ones((S, A, S)) + 0.3 * np.random.rand(S, A, S)
+        # if i_case == 0:
+        #     P = np.exp(10 * P)
+        # if i_case == 2:
+        #     P = 0.7 * np.ones((S, A, S)) + 0.3 * np.random.rand(S, A, S)
         P = P / np.sum(P, axis=2, keepdims=True)
         R = np.random.rand(S,A) #np.matmul(np.random.rand(S,1), np.ones((1,A))) #np.random.rand(S,A) # generally a function of (s,a), but we assume here pi_u to be uniform
         # Rs = np.ones(A) #np.ones(A)
         # theta = np.zeros(S)
-        gamma = .9
+        gamma = gamma_vec[i_gamma]
         return theta, Q, P, R, gamma
 
 
@@ -79,8 +79,8 @@ for i_case in range(3):
         exp_theta = np.exp(theta)
         pib = np.random.uniform(size=A)
         # pib = np.exp(100 * pib)
-        if i_case == 0:
-            pib[0] += 1000
+        # if i_case == 0:
+        #     pib[0] += 1000
         pib = pib / sum(pib)
         pib = np.expand_dims(pib, axis=0)
         Ppib = np.sum(np.multiply(P, np.dstack([pib] * S)), axis=1)
@@ -149,7 +149,7 @@ for i_case in range(3):
         # return np.trace(out1), np.trace(out1) / np.trace(out2), 0, 0
 
 
-    D = 12
+    D = 11
     d_range = np.arange(1, D)
 
     # eig_Ppower = []
@@ -179,13 +179,17 @@ for i_case in range(3):
     eig_decay = np.asarray(eig_decay) * (res_cov[0] / eig_decay[0])
     print(res_cov)
     import matplotlib.pyplot as plt
-    plt.plot(d_range, res_cov, label='{}: Empirical variance'.format(case_str[i_case]), linestyle='dashed',
-             color=color_case[i_case])
-    plt.plot(d_range, eig_decay, label='{}: Variance bound'.format(case_str[i_case]),
-             color=color_case[i_case])
+    plt.subplot(2, 1, 1)
+    plt.title('Empirical variance')
+    plt.plot(d_range, res_cov, label='gamma={}:'.format(gamma_vec[i_gamma]))
     plt.yscale('log')
-    plt.grid()
+    plt.legend()
+    plt.subplot(2, 1, 2)
+    plt.title('Analytical variance')
+    plt.plot(d_range, eig_decay, label='gamma={}:'.format(gamma_vec[i_gamma]))
+    plt.yscale('log')
+    plt.legend()
 plt.xlabel('Depth d')
 plt.ylabel('SoftTreeMax \nGradient variance ')
-plt.legend()
+# plt.legend()
 plt.show()

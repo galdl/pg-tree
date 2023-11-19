@@ -1,3 +1,4 @@
+
 import wandb
 import pandas as pd
 import numpy as np
@@ -7,10 +8,11 @@ from scipy.interpolate import interp1d
 FROM_CSV = True
 PLOT_REWARD = True # True: reward False: grad variance
 PLOT_3by3 = False
-PLOT_TIME = False
-CSV_PATH = "pgtree_results.h5"
+PLOT_TIME = True
+CSV_PATH = "pgtree_results_rebuttal.h5"
 store = pd.HDFStore(CSV_PATH)
 
+# before adding efficient zero
 if not FROM_CSV:
     api = wandb.Api()
     project_name = "pg-tree"
@@ -22,20 +24,22 @@ if not FROM_CSV:
     timestamps_list = []
     rewards_list = []
     variances_list = []
-    relevant_descriptions = ["Baseline of multiple environments PPO fixed episodic", "All games all depths"]
+    relevant_descriptions = ["Baseline of multiple environments PPO fixed episodic -- rebuttal",
+                             "All games all depths"]
     for run in runs:
         # if run.sweep is not None and run.sweep.id in sweep_ids:
         if "experiment_description" in run.config and run.config["experiment_description"] in relevant_descriptions:
-            h_df = run.history(keys=["train\episodic_reward", "_timestamp", "train\policy_weights_grad_var"], samples=3000) # can either use run.history() or, instead, scan_hisscan_history()tory() and build list of dicts via [r for r in h_df]
+            h_df = run.history(keys=["train\episodic_reward", "_timestamp", "train\policy_weights_grad_var"],
+                               samples=3000)  # can either use run.history() or, instead, scan_hisscan_history()tory() and build list of dicts via [r for r in h_df]
             hist_dicts = [r for r in h_df]
-            if len(hist_dicts) > 0: # len(h_df) > 0:
+            if len(hist_dicts) > 0:  # len(h_df) > 0:
                 # run.summary are the output key/values like accuracy.
                 # We call ._json_dict to omit large files
                 summary_list.append(run.summary._json_dict)
 
                 # run.config is the input metrics.
                 # We remove special values that start with _.
-                config = {k:v for k,v in run.config.items() if not k.startswith("_")}
+                config = {k: v for k, v in run.config.items() if not k.startswith("_")}
                 config["sweep_id"] = run.sweep.id
                 config_list.append(config)
 
@@ -98,10 +102,14 @@ if convergence_plots and FROM_CSV:
             out.append(new_val)
             c += 1
         return np.asarray(out)
+
+
     def moving_average2(x, w=20):
-        return np.convolve(x, np.ones(w), "same") / np.convolve(x * 0 + 1, np.ones(w), "same") # w
+        return np.convolve(x, np.ones(w), "same") / np.convolve(x * 0 + 1, np.ones(w), "same")  # w
+
 
     depths_to_ignore = [1, 4, 7]
+    # depths_to_ignore = []
 
     import matplotlib
     import matplotlib.colors as mcol
@@ -119,23 +127,26 @@ if convergence_plots and FROM_CSV:
     cpick = cm.ScalarMappable(norm=cnorm, cmap=cm1)
     cpick.set_array([])
 
-    line_width = 1.5
+    line_width = 3
     fontsize = 18
-    w_size = 30000 if PLOT_TIME else 200 #30
+    w_size = 200 if PLOT_TIME else 200  # 30
     matplotlib.rcParams.update({"font.size": fontsize - 4})
     game_envs = ["Asteroids", "Breakout", "VideoPinball", "KungFuMaster", "Phoenix",
-                 "Gopher", "Krull", "NameThisGame"]#, "CrazyClimber", "RoadRunner"]
+                 "Gopher", "Krull", "NameThisGame"]  # , "CrazyClimber", "RoadRunner"]
     # game_envs = ["Asteroids"]
     if PLOT_3by3:
         game_envs.append("CrazyClimber")
     game_envs_full = [n + "NoFrameskip-v4" for n in game_envs]
-    ylim_dict = {"Breakout": 350, "Asteroids": 5000, "VideoPinball": 400000, "SpaceInvaders": 1200, "MsPacman": 2500}
+    ylim_dict = {"Breakout": 350, "Asteroids": 5000, "VideoPinball": 400000, "SpaceInvaders": 1200,
+                 "MsPacman": 2500}
     # figure, big_axes = plt.subplots(nrows=1, ncols=len(game_envs))
     if PLOT_3by3:
-        nrows = 3; ncols = 3
+        nrows = 3;
+        ncols = 3
     else:
-        nrows = 2; ncols = 4
-    figure, big_axes = plt.subplots(figsize=(11.0, 7.0), nrows=nrows, ncols=ncols) #  sharey=True)
+        nrows = 2;
+        ncols = 4
+    figure, big_axes = plt.subplots(figsize=(11.0, 7.0), nrows=nrows, ncols=ncols)  # sharey=True)
 
     # for i in range(len(game_envs)):
     #     big_axes[i].tick_params(labelcolor=(1., 1., 1., 0.0), top="off", bottom="off", left="off", right="off")
@@ -180,7 +191,7 @@ if convergence_plots and FROM_CSV:
                 largest_x = max([l[-1] - l[0] for l in df_depth.timestamp_vec])
             else:
                 largest_x = df_depth["_step"].max()
-            x_vals_shared = np.linspace(1, largest_x, 1000) # round(largest_x / 3))
+            x_vals_shared = np.linspace(1, largest_x, 1000)  # round(largest_x / 3))
 
             y_vals_vec = None
             for i_run in range(df_depth.shape[0]):  # iterate on seeds
@@ -190,9 +201,11 @@ if convergence_plots and FROM_CSV:
                 else:
                     y_vals = df_depth.iloc[i_run].variance_vec
                 if PLOT_TIME:
-                    x_vals = np.asarray(df_depth.iloc[i_run].timestamp_vec) - np.asarray(df_depth.iloc[i_run].timestamp_vec)[0]
+                    x_vals = np.asarray(df_depth.iloc[i_run].timestamp_vec) - \
+                             np.asarray(df_depth.iloc[i_run].timestamp_vec)[0]
                 else:
-                    x_vals = np.asarray(df_depth.iloc[i_run].step_vec) - np.asarray(df_depth.iloc[i_run].step_vec)[0] + 1
+                    x_vals = np.asarray(df_depth.iloc[i_run].step_vec) - np.asarray(df_depth.iloc[i_run].step_vec)[
+                        0] + 1
                     y_vals = np.asarray(y_vals)
                 # f = interp1d(x_vals, y_vals, fill_value="extrapolate")
                 f = interp1d(x_vals, y_vals)
@@ -200,8 +213,8 @@ if convergence_plots and FROM_CSV:
                 x_vals = x_vals_shared[:last_loc]
                 y_vals = f(x_vals)
                 y_vals = moving_average2(y_vals, w=w_size)
-                w_drop = w_size #if PLOT_TIME else 10
-                if 'Kung' in env_name or 'Breakout' in env_name:
+                w_drop = 10 if PLOT_TIME else w_size
+                if not PLOT_TIME and ('Kung' in env_name or 'Breakout' in env_name):
                     w_drop = 500
                 nans = np.empty(x_vals_shared.shape[0] - len(y_vals))
                 nans[:] = np.nan
@@ -232,7 +245,7 @@ if convergence_plots and FROM_CSV:
                     ax.set_xlim([0, 168])
                     ax.set_xlabel("Time [hours]", fontsize=fontsize)
                 else:
-                    ax.set_xlabel("Num of updates", fontsize=fontsize) # (log scale)
+                    ax.set_xlabel("Num of \n online interactions", fontsize=fontsize)  # (log scale)
                 # ax.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
                 ax.grid("on")
                 ax.set_title(env_name[:-14], fontsize=fontsize)
@@ -252,8 +265,8 @@ if convergence_plots and FROM_CSV:
                 else:
                     ax.set_ylabel("Gradient variance\n(log scale)", fontsize=fontsize)
             print("finished depth {}".format(depth))
-            # if plot_count == 1:
-            #     plt.legend(framealpha=1)
+            if plot_count == 1:
+                plt.legend(framealpha=1)
 
     print("finished")
     plt.show()
